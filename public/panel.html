@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>MiniCloud – Панель</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      padding-top: 40px;
+    }
+
+    .container {
+      background: white;
+      width: 650px;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 4px 25px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-weight: 600;
+      font-size: 24px;
+      color: #2e2e2e;
+    }
+
+    .upload-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+    }
+
+    input[type="file"] {
+      padding: 8px;
+      background: #fafafa;
+      border: 1px solid #dcdcdc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #0063d1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    th {
+      font-weight: 600;
+      color: #555;
+    }
+
+    tr:hover {
+      background: #f9f9f9;
+    }
+
+    a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    #progress {
+      width: 100%;
+      height: 8px;
+      background: #eee;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 10px;
+      display: none;
+    }
+
+    #progress div {
+      height: 100%;
+      background: #007bff;
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Ваши файлы</h2>
+
+    <div class="upload-box">
+      <input type="file" id="fileInput">
+      <button onclick="upload()">Загрузить</button>
+    </div>
+
+    <div id="progress"><div></div></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Название файла</th>
+          <th>Размер</th>
+          <th>Скачать</th>
+          <th>Удалить</th>
+        </tr>
+      </thead>
+      <tbody id="fileTable"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) location = "/login.html";
+
+    async function loadFiles() {
+      const res = await fetch('/files', {
+        headers: { 'Authorization': token }
+      });
+      const data = await res.json();
+
+      const table = document.getElementById("fileTable");
+      table.innerHTML = "";
+
+      data.files.forEach(file => {
+        table.innerHTML += `
+          <tr>
+            <td>${file.name}</td>
+            <td>${(file.size/1024/1024).toFixed(2)} MB</td>
+            <td><a href="/files/${file.name}?token=${token}" download>Скачать</a></td>
+            <td><button onclick="deleteFile('${file.name}')">Удалить</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    async function deleteFile(name) {
+      if (!confirm(`Удалить файл "${name}"?`)) return;
+
+      await fetch('/files/' + name, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+      });
+
+      loadFiles();
+    }
+
+    async function upload() {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) return alert("Выберите файл!");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const progress = document.getElementById("progress");
+      const bar = progress.firstElementChild;
+      progress.style.display = "block";
+      bar.style.width = "0%";
+
+      const request = new XMLHttpRequest();
+      request.open("POST", "/upload");
+      request.setRequestHeader("Authorization", token);
+
+      request.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          bar.style.width = (e.loaded / e.total * 100) + "%";
+        }
+      };
+
+      request.onload = () => {
+        progress.style.display = "none";
+        loadFiles();
+      };
+
+      request.send(formData);
+    }
+
+    loadFiles();
+  </script>
+
+</body>
+</html>
