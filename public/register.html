@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="left-block">
+        <h1>Создание аккаунта ✨</h1>
+        <p>Доступ к вашему персональному облаку</p>
+
+        <img src="https://cdn-icons-png.flaticon.com/512/907/907717.png"
+             class="illustration">
+    </div>
+
+    <div class="right-block">
+        <form id="registerForm">
+            <h2>Регистрация</h2>
+
+            <input type="email" id="email" placeholder="Электронная почта" required>
+            <input type="password" id="pass" placeholder="Пароль" required>
+            <input type="password" id="pass2" placeholder="Повторите пароль" required>
+
+            <button type="submit">Создать аккаунт</button>
+
+            <p class="switch">
+                Уже есть аккаунт?
+                <a href="index.html">Войти</a>
+            </p>
+        </form>
+    </div>
+
+</div>
+
+<script src="auth/register.js"></script>
+</body>
+</html>

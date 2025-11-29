@@ -1,159 +1,153 @@
-const express = require('express');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
 
 const app = express();
 const PORT = 3000;
 
+// ==== middlewares ====
 app.use(express.json());
-app.use(express.static('public')); // Раздача веб-морды
+app.use(express.static("public"));
 
-// ---- БАЗА ПОЛЬЗОВАТЕЛЕЙ ----
-const users = [
-  { login: "admin", password: "12345", token: "supersecret-token" }
-];
+// ==== ensure users.json exists ====
+const usersFile = path.join(__dirname, "users.json");
+if (!fs.existsSync(usersFile)) {
+    fs.writeFileSync(usersFile, "{}");
+}
 
-// ---- АУТЕНТИФИКАЦИЯ ----
-app.post('/login', (req, res) => {
-  const { login, password } = req.body;
+// ==== load users ====
+let users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
 
-  const user = users.find(u => u.login === login && u.password === password);
+// ==== API: REGISTER ====
+app.post("/api/register", (req, res) => {
+    console.log("REGISTER BODY:", req.body);
 
-  if (!user) {
-    return res.status(401).json({ error: "Неверный логин или пароль" });
-  }
+    const { login, password } = req.body;
 
-  res.json({ token: user.token });
+    if (!login || !password) {
+        console.log("Ошибка: пустые поля");
+        return res.json({ success: false, message: "Заполните все поля" });
+    }
+
+    if (users[login]) {
+        console.log("Ошибка: пользователь уже существует");
+        return res.json({ success: false, message: "Пользователь уже существует" });
+    }
+
+    // создаём пользователя
+    users[login] = {
+        password: password,
+        token: "token_" + Math.random().toString(36).slice(2)
+    };
+
+    // сохраняем
+    fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+
+    console.log("Пользователь создан:", login);
+
+    return res.json({ success: true, message: "Пользователь создан" });
 });
 
-// ---- MIDDLEWARE: ПРОВЕРКА ТОКЕНА ----
-function auth(req, res, next) {
-  const token = req.headers.authorization || req.query.token;
 
-  const user = users.find(u => u.token === token);
+// ==== API: LOGIN ====
+app.post("/api/login", (req, res) => {
+    console.log("LOGIN BODY:", req.body);
 
-  if (!user) {
-    return res.status(401).json({ error: "Не авторизован" });
-  }
+    const { login, password } = req.body;
 
-  req.user = user; // сохраняем пользователя
-  next();
-}
+    if (!users[login]) {
+        return res.json({ success: false, message: "Нет такого пользователя" });
+    }
 
-// ---- НАСТРОЙКА ХРАНИЛИЩА ----
+    if (users[login].password !== password) {
+        return res.json({ success: false, message: "Неверный пароль" });
+    }
+
+    return res.json({
+        success: true,
+        token: users[login].token
+    });
+});
+
+
+// ========= PRIVATE STORAGE SYSTEM ==========
 function getUserStorage(login) {
-  const dir = path.join(__dirname, 'storage', login);
-
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  return dir;
+    const dir = path.join(__dirname, "storage", login);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return dir;
 }
 
-function getUserUsedSpace(login) {
-  const dir = getUserStorage(login);
-  const files = fs.readdirSync(dir);
+function auth(req, res, next) {
+    const token = req.headers.authorization;
+    const user = Object.keys(users).find(u => users[u].token === token);
 
-  let total = 0;
-  for (const file of files) {
-    const stat = fs.statSync(path.join(dir, file));
-    total += stat.size;
-  }
+    if (!user) return res.status(401).json({ error: "Не авторизован" });
 
-  return total; // в байтах
+    req.user = user;
+    next();
 }
-
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = getUserStorage(req.user.login);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => cb(null, file.originalname),
+    destination: (req, file, cb) => {
+        cb(null, getUserStorage(req.user));
+    },
+    filename: (req, file, cb) => cb(null, file.originalname)
 });
 
 const upload = multer({ storage });
 
-// ---- ПРОВЕРКА СЕРВЕРА ----
-app.get('/ping', (req, res) => {
-  res.json({ status: 'ok', message: 'mini-cloud is alive' });
+app.post("/upload", auth, upload.single("file"), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "Файл не загружен" });
+
+    res.json({ success: true, file: req.file.originalname });
 });
 
-const MAX_SPACE = 15 * 1024 * 1024 * 1024; // 15 ГБ
+// ========= START SERVER ==========
+app.listen(PORT, () => {
+    console.log(`🔥 Сервер запущен: http://localhost:${PORT}`);
+});
 
-app.post('/upload', auth, upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не передан' });
+// ==== СПИСОК ФАЙЛОВ ====
+app.get("/files", auth, (req, res) => {
+    const dir = getUserStorage(req.user);
+    if (!fs.existsSync(dir)) {
+        return res.json({ files: [] });
+    }
 
-  const used = getUserUsedSpace(req.user.login);
-
-  if (used + req.file.size > MAX_SPACE) {
-    // удаляем загруженный файл (multer уже сохранил)
-    fs.unlinkSync(req.file.path);
-
-    return res.status(400).json({
-      error: 'Превышен лимит хранилища 15 ГБ'
+    const list = fs.readdirSync(dir).map(name => {
+        const stat = fs.statSync(path.join(dir, name));
+        return {
+            name,
+            size: stat.size
+        };
     });
-  }
 
-  res.json({
-    message: 'Файл загружен',
-    fileName: req.file.originalname,
-    size: req.file.size
-  });
+    res.json({ files: list });
 });
 
 
+// ==== СКАЧИВАНИЕ ФАЙЛА ====
+app.get("/files/:name", auth, (req, res) => {
+    const filePath = path.join(getUserStorage(req.user), req.params.name);
 
-// ---- ЗАГРУЗКА ФАЙЛОВ ----
-app.post('/upload', auth, upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не передан' });
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "Файл не найден" });
+    }
 
-  res.json({
-    message: 'Файл загружен',
-    fileName: req.file.originalname,
-    size: req.file.size
-  });
+    res.download(filePath);
 });
 
-// ---- СПИСОК ФАЙЛОВ ----
-app.get('/files', auth, (req, res) => {
-  const dir = getUserStorage(req.user.login);
 
-  fs.readdir(dir, (err, files) => {
-    if (err) return res.status(500).json({ error: 'Ошибка чтения папки' });
+// ==== УДАЛЕНИЕ ФАЙЛА ====
+app.delete("/files/:name", auth, (req, res) => {
+    const filePath = path.join(getUserStorage(req.user), req.params.name);
 
-    res.json({ files });
-  });
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "Файл не найден" });
+    }
+
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
 });
 
-// ---- СКАЧИВАНИЕ ФАЙЛОВ ----
-app.delete('/files/:name', auth, (req, res) => {
-  const dir = getUserStorage(req.user.login);
-  const filePath = path.join(dir, req.params.name);
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "Файл не найден" });
-  }
-
-  fs.unlinkSync(filePath);
-  res.json({ message: "Файл удалён" });
-});
-
-async function deleteFile(name) {
-  if (!confirm(`Удалить файл "${name}"?`)) return;
-
-  await fetch('/files/' + name, {
-    method: 'DELETE',
-    headers: { 'Authorization': token }
-  });
-
-  loadFiles();
-}
-
-
-// ---- СТАРТ СЕРВЕРА ----
-app.listen(PORT, () =>
-  console.log(`Mini-cloud started → http://localhost:${PORT}`)
-);

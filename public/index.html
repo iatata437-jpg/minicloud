@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход в систему</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class="container">
+
+    <div class="left-block">
+        <h1>Добро пожаловать 👋</h1>
+        <p>Ваше облачное хранилище</p>
+
+        <img src="https://cdn-icons-png.flaticon.com/512/2920/2920244.png"
+             class="illustration">
+    </div>
+
+    <div class="right-block">
+        <form id="loginForm">
+            <h2>Вход</h2>
+
+            <input type="text" id="login" placeholder="Логин" required>
+            <input type="password" id="password" placeholder="Пароль" required>
+
+            <button type="submit">Войти</button>
+
+            <p class="switch">
+                Нет аккаунта?
+                <a href="register.html">Регистрация</a>
+            </p>
+        </form>
+    </div>
+
+</div>
+
+<script src="auth/script.js"></script>
+</body>
+</html>
