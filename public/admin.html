@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+    <link rel="stylesheet" href="/style.css">
+
+    <style>
+        .admin-container {
+            width: 900px;
+            background:white;
+            margin: 40px auto;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.15);
+        }
+        h2 { text-align:center; margin-bottom:25px; }
+        table { width:100%; border-collapse:collapse; margin-top:20px; }
+        th,td{ padding:10px; border-bottom:1px solid #eee; }
+        th{ background:#fafafa; font-weight:600; }
+        .btn{ padding:8px 14px; background:#6a5acd; border:none; color:white; cursor:pointer; border-radius:8px; }
+    </style>
+</head>
+<body>
+
+<div class="admin-container">
+    <h2>Админ-панель</h2>
+
+    <button class="btn" onclick="adminLogin()">Войти в админку</button>
+    <br><br>
+
+    <button class="btn" onclick="loadUsers()">Пользователи</button>
+    <button class="btn" onclick="loadFiles()">Файлы</button>
+    <button class="btn" onclick="loadOnline()">Онлайн</button>
+
+    <div id="output" style="margin-top:25px;"></div>
+</div>
+
+<script src="/auth/admin.js"></script>
+</body>
+</html>

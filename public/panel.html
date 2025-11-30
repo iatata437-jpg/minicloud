@@ -161,12 +161,13 @@
 
 </div>
 
+
 <script>
-    // Проверяем токен
+    // Проверка токена
     const token = localStorage.getItem("token");
     if (!token) location.href = "/index.html";
 
-    // Выход
+    // Выход из акаунта
     function logout() {
         localStorage.removeItem("token");
         location.href = "/index.html";
@@ -183,18 +184,41 @@
         table.innerHTML = "";
 
         data.files.forEach(file => {
-    		table.innerHTML += `
-      		 <tr>
-                  <td>${file.name}</td>
+            table.innerHTML += `
+                <tr>
+                    <td>${file.name}</td>
                     <td>${(file.size / 1024 / 1024).toFixed(2)} MB</td>
-                   <td><a href="/files/${file.name}?token=${token}" download>Скачать</a></td>
-                 <td><button onclick="deleteFile('${file.name}')">Удалить</button></td>
-               </tr>
-    `;
-});
-
+                    <td>
+                        <a href="/files/${file.name}" 
+                           onclick="event.preventDefault(); downloadFile('${file.name}')">
+                           Скачать
+                        </a>
+                    </td>
+                    <td><button class="delete-btn" onclick="deleteFile('${file.name}')">Удалить</button></td>
+                </tr>
+            `;
+        });
     }
 
+
+    // Скачать файл корректно (через заголовок)
+    function downloadFile(name) {
+        const url = `/files/${name}`;
+
+        fetch(url, {
+            headers: { "Authorization": token }
+        })
+        .then(res => res.blob())
+        .then(blob => {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            a.click();
+        });
+    }
+
+
+    // Удаление файла
     async function deleteFile(name) {
         if (!confirm(`Удалить файл "${name}"?`)) return;
 
@@ -206,7 +230,7 @@
         loadFiles();
     }
 
-    // Загрузка файла
+    // Загрузка файла с прогресс-баром
     function upload() {
         const file = document.getElementById("fileInput").files[0];
         if (!file) return alert("Выберите файл!");
@@ -216,27 +240,29 @@
 
         const progress = document.getElementById("progress");
         const bar = progress.firstElementChild;
+
         progress.style.display = "block";
         bar.style.width = "0%";
 
-        const request = new XMLHttpRequest();
-        request.open("POST", "/upload");
-        request.setRequestHeader("Authorization", token);
+        const req = new XMLHttpRequest();
+        req.open("POST", "/upload");
+        req.setRequestHeader("Authorization", token);
 
-        request.upload.onprogress = e => {
+        req.upload.onprogress = e => {
             if (e.lengthComputable) {
                 bar.style.width = (e.loaded / e.total * 100) + "%";
             }
         };
 
-        request.onload = () => {
+        req.onload = () => {
             progress.style.display = "none";
             loadFiles();
         };
 
-        request.send(formData);
+        req.send(formData);
     }
 
+    // Загружаем список сразу
     loadFiles();
 </script>
 
