@@ -3,40 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <title>Регистрация</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
+
+    <style>
+        body{
+            background: #f5f5ff;
+            font-family: 'Inter', sans-serif;
+            display:flex;
+            justify-content:center;
+            padding-top:40px;
+        }
+        .reg-box{
+            width:420px;
+            background:white;
+            padding:30px;
+            border-radius:14px;
+            box-shadow:0 0 30px rgba(0,0,0,0.1);
+        }
+        h2{ text-align:center; margin-bottom:25px;}
+        input{
+            width:100%;
+            padding:12px;
+            margin:8px 0;
+            border-radius:8px;
+            border:1px solid #ccc;
+            font-size:15px;
+        }
+        button{
+            width:100%;
+            padding:12px;
+            background:#6a5acd;
+            color:white;
+            border:none;
+            border-radius:10px;
+            margin-top:10px;
+            cursor:pointer;
+            font-size:16px;
+        }
+        button:hover{ background:#5848c2; }
+        .hidden{ display:none; }
+        a{ color:#6a5acd; }
+    </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="reg-box">
 
-    <div class="left-block">
-        <h1>Создание аккаунта ✨</h1>
-        <p>Доступ к вашему персональному облаку</p>
+    <h2>Создание аккаунта</h2>
 
-        <img src="https://cdn-icons-png.flaticon.com/512/907/907717.png"
-             class="illustration">
-    </div>
+    <!-- Шаг 1: регистрация -->
+    <form id="registerForm">
+        <input type="email" id="email" placeholder="Электронная почта" required>
+        <input type="password" id="pass" placeholder="Пароль" required>
+        <input type="password" id="pass2" placeholder="Повторите пароль" required>
 
-    <div class="right-block">
-        <form id="registerForm">
-            <h2>Регистрация</h2>
+        <button type="submit">Отправить код подтверждения</button>
+    </form>
 
-            <input type="email" id="email" placeholder="Электронная почта" required>
-            <input type="password" id="pass" placeholder="Пароль" required>
-            <input type="password" id="pass2" placeholder="Повторите пароль" required>
+    <!-- Шаг 2: ввод кода -->
+    <form id="confirmForm" class="hidden">
+        <input type="text" id="confirmCode" placeholder="Введите код из письма" required>
 
-            <button type="submit">Создать аккаунт</button>
+        <button type="submit">Подтвердить и создать аккаунт</button>
+    </form>
 
-            <p class="switch">
-                Уже есть аккаунт?
-                <a href="index.html">Войти</a>
-            </p>
-        </form>
-    </div>
+    <p style="margin-top:15px; text-align:center;">
+        Уже есть аккаунт? <a href="/index.html">Войти</a>
+    </p>
 
 </div>
 
-<script src="auth/register.js"></script>
+<script src="/auth/register.js"></script>
+
 </body>
 </html>

@@ -1,7 +1,39 @@
 console.log("REGISTER.JS LOADED");
 
+// Поля формы
 const registerForm = document.getElementById("registerForm");
 
+// ШАГ 1 — запрос кода подтверждения
+async function sendVerificationCode(email, password) {
+    const res = await fetch("/api/register/sendCode", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+        alert("Ошибка: " + data.message);
+        return false;
+    }
+
+    return true;
+}
+
+// ШАГ 2 — подтверждение регистрации по коду
+async function confirmRegistration(email, code) {
+    const res = await fetch("/api/register/confirm", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email, code })
+    });
+
+    return await res.json();
+}
+
+
+// ==== ОБРАБОТКА ОТПРАВКИ ФОРМЫ ====
 if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -20,23 +52,26 @@ if (registerForm) {
             return;
         }
 
-        const body = { login: email, password: pass };
+        // Шаг 1 — отправляем код на почту
+        const sent = await sendVerificationCode(email, pass);
+        if (!sent) return;
 
-        const res = await fetch("/api/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-        });
+        const code = prompt("Введите код подтверждения, отправленный на email:");
 
-        const data = await res.json();
-        console.log("REGISTER RESPONSE:", data);
-
-        if (!data.success) {
-            alert("Ошибка: " + data.message);
+        if (!code) {
+            alert("Вы не ввели код!");
             return;
         }
 
-        alert("Аккаунт создан!");
+        // Шаг 2 — подтверждаем регистрацию
+        const result = await confirmRegistration(email, code);
+
+        if (!result.success) {
+            alert("Ошибка: " + result.message);
+            return;
+        }
+
+        alert("Регистрация подтверждена! Теперь можете войти.");
         window.location.href = "/index.html";
     });
 }
