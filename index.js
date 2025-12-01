@@ -16,7 +16,6 @@ const PORT = 3000;
 // ======================= SMTP НАСТРОЙКИ ======================
 // ============================================================
 
-// ⚠️ СЮДА ВСТАВЛЯЕШЬ ПАРОЛЬ ПРИЛОЖЕНИЯ GMAIL (НЕ обычный пароль!)
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -54,6 +53,7 @@ if (!fs.existsSync(usersFile)) fs.writeFileSync(usersFile, "{}");
 
 let users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
 
+
 // =================== ОНЛАЙН АКТИВНОСТЬ ======================
 
 let activity = {};
@@ -77,7 +77,7 @@ function getOnlineUsers() {
 
 
 // ============================================================
-// ================== ОТПРАВКА КОДА ПОДТВЕРЖДЕНИЯ =============
+// ============= РЕГИСТРАЦИЯ + ПОДТВЕРЖДЕНИЕ EMAIL ============
 // ============================================================
 
 app.post("/api/register/sendCode", async (req, res) => {
@@ -89,10 +89,8 @@ app.post("/api/register/sendCode", async (req, res) => {
     if (users[email])
         return res.json({ success: false, message: "Такой пользователь уже существует" });
 
-    // Создаём код
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Временно сохраняем
     users[email] = {
         password,
         email,
@@ -103,21 +101,16 @@ app.post("/api/register/sendCode", async (req, res) => {
 
     fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
 
-    // Отправляем письмо
     await transporter.sendMail({
         from: "MiniCloud <iatata430@gmail.com>",
         to: email,
         subject: "Код подтверждения регистрации",
-        text: `Ваш код для подтверждения регистрации: ${code}`
+        text: `Ваш код: ${code}`
     });
 
-    res.json({ success: true, message: "Код отправлен на email" });
+    res.json({ success: true });
 });
 
-
-// ============================================================
-// ================== ПОДТВЕРЖДЕНИЕ РЕГИСТРАЦИИ ===============
-// ============================================================
 
 app.post("/api/register/confirm", (req, res) => {
     const { email, code } = req.body;
@@ -128,13 +121,12 @@ app.post("/api/register/confirm", (req, res) => {
     if (users[email].verifyCode !== code)
         return res.json({ success: false, message: "Код неверный" });
 
-    // Подтверждаем
     users[email].verified = true;
     delete users[email].verifyCode;
 
     fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
 
-    res.json({ success: true, message: "Регистрация подтверждена" });
+    res.json({ success: true });
 });
 
 
@@ -155,7 +147,6 @@ app.post("/api/login", (req, res) => {
         return res.json({ success: false, message: "Email не подтверждён!" });
 
     activity[login] = Date.now();
-
     res.json({ success: true, token: users[login].token });
 });
 
@@ -164,12 +155,26 @@ app.post("/api/login", (req, res) => {
 // ===================== ФАЙЛОВОЕ ХРАНИЛИЩЕ ====================
 // ============================================================
 
-function getUserStorage(user) {
-    const dir = path.join(__dirname, "storage", user);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    return dir;
+// Папка пользователя + путь
+function getUserStorage(user, subPath = "") {
+    const base = path.join(__dirname, "storage", user);
+    const target = path.join(base, subPath);
+
+    if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
+
+    return target;
 }
 
+// Безопасный путь (без ../)
+function safePath(subPath) {
+    if (!subPath) return "";
+    subPath = subPath.replace(/\\/g, "/");
+    if (subPath.startsWith("/")) subPath = subPath.slice(1);
+    if (subPath.includes("..")) return "";
+    return subPath;
+}
+
+// Авторизация
 function auth(req, res, next) {
     const token = req.headers.authorization;
     const user = Object.keys(users).find(u => users[u].token === token);
@@ -180,41 +185,89 @@ function auth(req, res, next) {
     next();
 }
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, getUserStorage(req.user)),
+// Multer с подпапками
+const storageEngine = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const sub = safePath(req.query.path || "");
+        cb(null, getUserStorage(req.user, sub));
+    },
     filename: (req, file, cb) => cb(null, file.originalname)
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage: storageEngine });
 
-app.post("/upload", auth, upload.single("file"), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: "Файл не загружен" });
+
+// === Создать папку ===
+app.post("/create-folder", auth, (req, res) => {
+    const { name, path: folderPath } = req.body;
+
+    if (!name || name.trim() === "")
+        return res.json({ success: false, message: "Введите имя папки" });
+
+    const safeFolder = safePath(folderPath || "");
+    const base = getUserStorage(req.user, safeFolder);
+
+    const newFolder = path.join(base, name);
+
+    if (fs.existsSync(newFolder))
+        return res.json({ success: false, message: "Папка уже существует" });
+
+    fs.mkdirSync(newFolder);
     res.json({ success: true });
 });
 
+
+// === Загрузка файла ===
+app.post("/upload", auth, upload.single("file"), (req, res) => {
+    if (!req.file)
+        return res.status(400).json({ error: "Файл не загружен" });
+
+    res.json({ success: true });
+});
+
+
+// === Получить список ===
 app.get("/files", auth, (req, res) => {
-    const dir = getUserStorage(req.user);
-    const list = fs.readdirSync(dir).map(name => ({
-        name,
-        size: fs.statSync(path.join(dir, name)).size
-    }));
-    res.json({ files: list });
+    const sub = safePath(req.query.path || "");
+    const dir = getUserStorage(req.user, sub);
+
+    const list = fs.readdirSync(dir).map(name => {
+        const full = path.join(dir, name);
+        const stat = fs.statSync(full);
+
+        return {
+            name,
+            isFolder: stat.isDirectory(),
+            size: stat.isDirectory() ? 0 : stat.size
+        };
+    });
+
+    res.json({ path: sub, files: list });
 });
 
+
+// === Скачать файл ===
 app.get("/files/:name", auth, (req, res) => {
-    const filePath = path.join(getUserStorage(req.user), req.params.name);
-    if (!fs.existsSync(filePath))
+    const sub = safePath(req.query.path || "");
+    const full = path.join(getUserStorage(req.user, sub), req.params.name);
+
+    if (!fs.existsSync(full))
         return res.status(404).json({ error: "Файл не найден" });
 
-    res.download(filePath);
+    res.download(full);
 });
 
-app.delete("/files/:name", auth, (req, res) => {
-    const filePath = path.join(getUserStorage(req.user), req.params.name);
-    if (!fs.existsSync(filePath))
-        return res.status(404).json({ error: "Файл не найден" });
 
-    fs.unlinkSync(filePath);
+// === Удалить файл или папку ===
+app.delete("/files/:name", auth, (req, res) => {
+    const sub = safePath(req.query.path || "");
+    const full = path.join(getUserStorage(req.user, sub), req.params.name);
+
+    if (!fs.existsSync(full))
+        return res.status(404).json({ error: "Не найдено" });
+
+    fs.rmSync(full, { recursive: true, force: true });
+
     res.json({ success: true });
 });
 
@@ -234,7 +287,6 @@ app.post("/admin/login", (req, res) => {
         return res.json({ success: false });
 
     ADMIN_TOKEN = "admin_" + Math.random().toString(36).slice(2);
-
     res.json({ success: true, token: ADMIN_TOKEN });
 });
 
@@ -244,32 +296,31 @@ app.get("/admin/users", adminAuth, (req, res) => {
 
 app.get("/admin/files", adminAuth, (req, res) => {
     const root = path.join(__dirname, "storage");
-    const result = {};
 
+    const result = {};
     if (!fs.existsSync(root)) return res.json({ files: {} });
 
-    const folders = fs.readdirSync(root);
-
-    folders.forEach(user => {
+    for (const user of fs.readdirSync(root)) {
         const dir = path.join(root, user);
-        const files = fs.readdirSync(dir).map(f => ({
+        if (!fs.statSync(dir).isDirectory()) continue;
+
+        result[user] = fs.readdirSync(dir).map(f => ({
             name: f,
             size: fs.statSync(path.join(dir, f)).size
         }));
-        result[user] = files;
-    });
+    }
 
     res.json({ files: result });
 });
 
 app.get("/admin/download/:user/:file", adminAuth, (req, res) => {
     const { user, file } = req.params;
-    const filePath = path.join(__dirname, "storage", user, file);
+    const full = path.join(__dirname, "storage", user, file);
 
-    if (!fs.existsSync(filePath))
+    if (!fs.existsSync(full))
         return res.status(404).json({ error: "Файл не найден" });
 
-    res.download(filePath);
+    res.download(full);
 });
 
 app.get("/admin/online", adminAuth, (req, res) => {
