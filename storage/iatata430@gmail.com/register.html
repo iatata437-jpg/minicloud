@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация</title>
+    <link rel="stylesheet" href="/style.css">
+
+    <style>
+        /* ---------- ТЕМЫ ЧЕРЕЗ CSS-ПЕРЕМЕННЫЕ ---------- */
+        :root {
+            --bg-color: #f5f5ff;
+            --card-bg: #ffffff;
+            --text-color: #000000;
+            --border-color: #cccccc;
+            --input-bg: #ffffff;
+            --btn-bg: #6a5acd;
+            --btn-text: #ffffff;
+            --btn-hover: #5848c2;
+            --link-color: #6a5acd;
+        }
+
+        .dark {
+            --bg-color: #121212;
+            --card-bg: #1f1f1f;
+            --text-color: #ffffff;
+            --border-color: #2b2b2b;
+            --input-bg: #292929;
+            --btn-bg: #8a7aff;
+            --btn-text: #ffffff;
+            --btn-hover: #7c6cff;
+            --link-color: #9b8eff;
+        }
+
+        body {
+            background: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            padding-top: 40px;
+            color: var(--text-color);
+            transition: 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        /* ---------- АНИМИРОВАННЫЙ ФОН СМАЙЛИКОВ ---------- */
+        .emoji-bg {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .emoji-bg span {
+            position: absolute;
+            bottom: -80px;
+            animation: floatUp linear infinite;
+            opacity: 0.8;
+        }
+
+        /* 19 смайликов — разные параметры */
+        .emoji-bg span:nth-child(1)  { left: 5%;  font-size: 44px; animation-duration: 12s; animation-delay: 0s; }
+        .emoji-bg span:nth-child(2)  { left: 12%; font-size: 30px; animation-duration: 15s; animation-delay: 1s; }
+        .emoji-bg span:nth-child(3)  { left: 20%; font-size: 55px; animation-duration: 11s; animation-delay: 2s; }
+        .emoji-bg span:nth-child(4)  { left: 28%; font-size: 42px; animation-duration: 17s; animation-delay: 0.5s; }
+        .emoji-bg span:nth-child(5)  { left: 35%; font-size: 36px; animation-duration: 13s; animation-delay: 3s; }
+        .emoji-bg span:nth-child(6)  { left: 44%; font-size: 60px; animation-duration: 14s; animation-delay: 1s; }
+        .emoji-bg span:nth-child(7)  { left: 51%; font-size: 29px; animation-duration: 16s; animation-delay: 2.5s; }
+        .emoji-bg span:nth-child(8)  { left: 60%; font-size: 48px; animation-duration: 10s; animation-delay: 0s; }
+        .emoji-bg span:nth-child(9)  { left: 68%; font-size: 40px; animation-duration: 18s; animation-delay: 1.2s; }
+        .emoji-bg span:nth-child(10) { left: 75%; font-size: 33px; animation-duration: 19s; animation-delay: 3s; }
+
+        /* Новые смайлики (машинка, луна, солнце, человек) */
+        .emoji-bg span:nth-child(11) { left: 15%; font-size: 50px; animation-duration: 14s; animation-delay: 0.4s; } /* 🚗 */
+        .emoji-bg span:nth-child(12) { left: 30%; font-size: 45px; animation-duration: 21s; animation-delay: 1.5s; } /* 🌙 */
+        .emoji-bg span:nth-child(13) { left: 55%; font-size: 52px; animation-duration: 17s; animation-delay: 0.8s; } /* ☀️ */
+        .emoji-bg span:nth-child(14) { left: 80%; font-size: 46px; animation-duration: 16s; animation-delay: 2s; } /* 🧑🏿 */
+
+        /* Дополнительные — для плотности */
+        .emoji-bg span:nth-child(15) { left: 10%; font-size: 38px; animation-duration: 12s; animation-delay: 1s; }
+        .emoji-bg span:nth-child(16) { left: 25%; font-size: 27px; animation-duration: 14s; animation-delay: 2.7s; }
+        .emoji-bg span:nth-child(17) { left: 47%; font-size: 57px; animation-duration: 11s; animation-delay: 0.3s; }
+        .emoji-bg span:nth-child(18) { left: 66%; font-size: 34px; animation-duration: 15s; animation-delay: 2s; }
+        .emoji-bg span:nth-child(19) { left: 90%; font-size: 42px; animation-duration: 13s; animation-delay: 0.5s; }
+
+        @keyframes floatUp {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+            50%  { transform: translateY(-60vh) rotate(180deg); opacity: 1; }
+            100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+        }
+
+        .dark .emoji-bg span { opacity: 0.9; }
+
+        /* ---------- Блок регистрации ---------- */
+        .reg-box {
+            width: 420px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+            transition: 0.3s ease;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--text-color);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            font-size: 15px;
+            color: var(--text-color);
+            transition: 0.3s ease;
+        }
+
+        input:focus {
+            border-color: var(--btn-bg);
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: var(--btn-hover);
+        }
+
+        a {
+            color: var(--link-color);
+        }
+
+        .hidden { display: none; }
+
+        /* ---------- Кнопка темы ---------- */
+        #themeToggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+
+        #themeToggle:hover { opacity: 0.85; }
+
+    </style>
+</head>
+
+<body>
+
+<!-- Фон со смайликами -->
+<div class="emoji-bg">
+    <span>😎</span>
+    <span>😁</span>
+    <span>💜</span>
+    <span>⭐</span>
+    <span>⚡</span>
+    <span>💫</span>
+    <span>😊</span>
+    <span>🌀</span>
+    <span>✨</span>
+    <span>🤍</span>
+
+    <span>🚗</span>
+    <span>🌙</span>
+    <span>☀️</span>
+    <span>🧑🏿</span>
+
+    <span>⭐</span>
+    <span>✨</span>
+    <span>😊</span>
+    <span>⚡</span>
+    <span>😁</span>
+</div>
+
+<!-- Кнопка темы -->
+<button id="themeToggle">🌓</button>
+
+<div class="reg-box">
+
+    <h2>Создание аккаунта</h2>
+
+    <!-- Шаг 1: регистрация -->
+    <form id="registerForm">
+        <input type="email" id="email" placeholder="Электронная почта" required>
+        <input type="password" id="pass" placeholder="Пароль" required>
+        <input type="password" id="pass2" placeholder="Повторите пароль" required>
+
+        <button type="submit">Отправить код подтверждения</button>
+    </form>
+
+    <!-- Шаг 2: ввод кода -->
+    <form id="confirmForm" class="hidden">
+        <input type="text" id="confirmCode" placeholder="Введите код из письма" required>
+        <button type="submit">Подтвердить и создать аккаунт</button>
+    </form>
+
+    <p style="margin-top:15px; text-align:center;">
+        Уже есть аккаунт?
+        <a href="/index.html">Войти</a>
+    </p>
+
+</div>
+
+<script src="/auth/register.js"></script>
+
+<script>
+    if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark");
+    }
+
+    document.getElementById("themeToggle").onclick = () => {
+        document.body.classList.toggle("dark");
+        localStorage.setItem(
+            "theme",
+            document.body.classList.contains("dark") ? "dark" : "light"
+        );
+    };
+</script>
+
+</body>
+</html>
